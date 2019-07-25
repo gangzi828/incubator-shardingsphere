@@ -25,11 +25,13 @@ import org.apache.shardingsphere.core.execute.metadata.TableMetaDataInitializer;
 import org.apache.shardingsphere.core.metadata.ShardingMetaData;
 import org.apache.shardingsphere.core.metadata.datasource.ShardingDataSourceMetaData;
 import org.apache.shardingsphere.core.metadata.table.ShardingTableMetaData;
-import org.apache.shardingsphere.core.parse.cache.ParsingResultCache;
+import org.apache.shardingsphere.core.parse.SQLParseEngine;
+import org.apache.shardingsphere.core.parse.SQLParseEngineFactory;
 import org.apache.shardingsphere.core.rule.ShardingRule;
 import org.apache.shardingsphere.shardingjdbc.jdbc.core.datasource.metadata.CachedDatabaseMetaData;
 import org.apache.shardingsphere.shardingjdbc.jdbc.metadata.JDBCTableMetaDataConnectionManager;
 import org.apache.shardingsphere.spi.database.DatabaseType;
+import org.apache.shardingsphere.transaction.ShardingTransactionManagerEngine;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -49,37 +51,44 @@ import java.util.Properties;
 @Getter
 public final class ShardingContext implements AutoCloseable {
     
-    private final DatabaseMetaData cachedDatabaseMetaData;
-    
     private final ShardingRule shardingRule;
-    
-    private final DatabaseType databaseType;
-    
-    private final ShardingExecuteEngine executeEngine;
     
     private final ShardingProperties shardingProperties;
     
+    private final DatabaseType databaseType;
+    
+    private final DatabaseMetaData cachedDatabaseMetaData;
+    
+    private final ShardingExecuteEngine executeEngine;
+    
     private final ShardingMetaData metaData;
     
-    private final ParsingResultCache parsingResultCache;
+    private final SQLParseEngine parseEngine;
+    
+    private final ShardingTransactionManagerEngine shardingTransactionManagerEngine;
     
     public ShardingContext(final Map<String, DataSource> dataSourceMap, final ShardingRule shardingRule, final DatabaseType databaseType, final Properties props) throws SQLException {
         this.shardingRule = shardingRule;
-        this.cachedDatabaseMetaData = createCachedDatabaseMetaData(dataSourceMap);
-        this.databaseType = databaseType;
         shardingProperties = new ShardingProperties(null == props ? new Properties() : props);
-        int executorSize = shardingProperties.getValue(ShardingPropertiesConstant.EXECUTOR_SIZE);
-        executeEngine = new ShardingExecuteEngine(executorSize);
-        ShardingDataSourceMetaData shardingDataSourceMetaData = new ShardingDataSourceMetaData(getDataSourceURLs(dataSourceMap), shardingRule, databaseType);
-        ShardingTableMetaData shardingTableMetaData = new ShardingTableMetaData(getTableMetaDataInitializer(dataSourceMap, shardingDataSourceMetaData).load(shardingRule));
-        metaData = new ShardingMetaData(shardingDataSourceMetaData, shardingTableMetaData);
-        parsingResultCache = new ParsingResultCache();
+        this.databaseType = databaseType;
+        cachedDatabaseMetaData = createCachedDatabaseMetaData(dataSourceMap);
+        executeEngine = new ShardingExecuteEngine(shardingProperties.<Integer>getValue(ShardingPropertiesConstant.EXECUTOR_SIZE));
+        metaData = createShardingMetaData(dataSourceMap, shardingRule, databaseType);
+        parseEngine = SQLParseEngineFactory.getSQLParseEngine(databaseType);
+        shardingTransactionManagerEngine = new ShardingTransactionManagerEngine();
+        shardingTransactionManagerEngine.init(databaseType, dataSourceMap);
     }
     
     private DatabaseMetaData createCachedDatabaseMetaData(final Map<String, DataSource> dataSourceMap) throws SQLException {
         try (Connection connection = dataSourceMap.values().iterator().next().getConnection()) {
             return new CachedDatabaseMetaData(connection.getMetaData(), dataSourceMap, shardingRule);
         }
+    }
+    
+    private ShardingMetaData createShardingMetaData(final Map<String, DataSource> dataSourceMap, final ShardingRule shardingRule, final DatabaseType databaseType) throws SQLException {
+        ShardingDataSourceMetaData shardingDataSourceMetaData = new ShardingDataSourceMetaData(getDataSourceURLs(dataSourceMap), shardingRule, databaseType);
+        ShardingTableMetaData shardingTableMetaData = new ShardingTableMetaData(getTableMetaDataInitializer(dataSourceMap, shardingDataSourceMetaData).load(shardingRule));
+        return new ShardingMetaData(shardingDataSourceMetaData, shardingTableMetaData);
     }
     
     private Map<String, String> getDataSourceURLs(final Map<String, DataSource> dataSourceMap) throws SQLException {
@@ -103,7 +112,8 @@ public final class ShardingContext implements AutoCloseable {
     }
     
     @Override
-    public void close() {
+    public void close() throws Exception {
+        shardingTransactionManagerEngine.close();
         executeEngine.close();
     }
 }

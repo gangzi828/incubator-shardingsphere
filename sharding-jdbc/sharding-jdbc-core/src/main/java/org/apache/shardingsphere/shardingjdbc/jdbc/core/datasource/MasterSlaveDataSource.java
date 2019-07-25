@@ -20,8 +20,10 @@ package org.apache.shardingsphere.shardingjdbc.jdbc.core.datasource;
 import lombok.Getter;
 import org.apache.shardingsphere.api.config.masterslave.MasterSlaveRuleConfiguration;
 import org.apache.shardingsphere.core.constant.properties.ShardingProperties;
-import org.apache.shardingsphere.core.parse.entry.MasterSlaveSQLParseEntry;
+import org.apache.shardingsphere.core.parse.SQLParseEngine;
+import org.apache.shardingsphere.core.parse.SQLParseEngineFactory;
 import org.apache.shardingsphere.core.rule.MasterSlaveRule;
+import org.apache.shardingsphere.core.util.ConfigurationLogger;
 import org.apache.shardingsphere.shardingjdbc.jdbc.adapter.AbstractDataSourceAdapter;
 import org.apache.shardingsphere.shardingjdbc.jdbc.core.connection.MasterSlaveConnection;
 import org.apache.shardingsphere.shardingjdbc.jdbc.core.datasource.metadata.CachedDatabaseMetaData;
@@ -47,24 +49,28 @@ public class MasterSlaveDataSource extends AbstractDataSourceAdapter {
     
     private final MasterSlaveRule masterSlaveRule;
     
-    private final MasterSlaveSQLParseEntry parseEngine;
-    
     private final ShardingProperties shardingProperties;
+    
+    private final SQLParseEngine parseEngine;
     
     public MasterSlaveDataSource(final Map<String, DataSource> dataSourceMap, final MasterSlaveRuleConfiguration masterSlaveRuleConfig, final Properties props) throws SQLException {
         super(dataSourceMap);
+        ConfigurationLogger.log(masterSlaveRuleConfig);
+        ConfigurationLogger.log(props);
         cachedDatabaseMetaData = createCachedDatabaseMetaData(dataSourceMap);
         this.masterSlaveRule = new MasterSlaveRule(masterSlaveRuleConfig);
-        parseEngine = new MasterSlaveSQLParseEntry(getDatabaseType());
         shardingProperties = new ShardingProperties(null == props ? new Properties() : props);
+        parseEngine = SQLParseEngineFactory.getSQLParseEngine(getDatabaseType());
     }
     
     public MasterSlaveDataSource(final Map<String, DataSource> dataSourceMap, final MasterSlaveRule masterSlaveRule, final Properties props) throws SQLException {
         super(dataSourceMap);
+        ConfigurationLogger.log(masterSlaveRule.getMasterSlaveRuleConfiguration());
+        ConfigurationLogger.log(props);
         cachedDatabaseMetaData = createCachedDatabaseMetaData(dataSourceMap);
         this.masterSlaveRule = masterSlaveRule;
         shardingProperties = new ShardingProperties(null == props ? new Properties() : props);
-        parseEngine = new MasterSlaveSQLParseEntry(getDatabaseType());
+        parseEngine = SQLParseEngineFactory.getSQLParseEngine(getDatabaseType());
     }
     
     private DatabaseMetaData createCachedDatabaseMetaData(final Map<String, DataSource> dataSourceMap) throws SQLException {

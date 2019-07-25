@@ -18,8 +18,8 @@
 package org.apache.shardingsphere.core.rewrite.token.generator;
 
 import com.google.common.base.Optional;
-import org.apache.shardingsphere.core.optimize.statement.InsertOptimizedStatement;
-import org.apache.shardingsphere.core.optimize.statement.OptimizedStatement;
+import org.apache.shardingsphere.core.optimize.api.statement.InsertOptimizedStatement;
+import org.apache.shardingsphere.core.optimize.api.statement.OptimizedStatement;
 import org.apache.shardingsphere.core.parse.sql.segment.dml.column.InsertColumnsSegment;
 import org.apache.shardingsphere.core.rewrite.builder.ParameterBuilder;
 import org.apache.shardingsphere.core.rewrite.token.pojo.InsertAssistedColumnsToken;
@@ -36,7 +36,8 @@ import java.util.LinkedList;
 public final class InsertAssistedColumnsTokenGenerator implements OptionalSQLTokenGenerator<EncryptRule> {
     
     @Override
-    public Optional<InsertAssistedColumnsToken> generateSQLToken(final OptimizedStatement optimizedStatement, final ParameterBuilder parameterBuilder, final EncryptRule encryptRule) {
+    public Optional<InsertAssistedColumnsToken> generateSQLToken(
+            final OptimizedStatement optimizedStatement, final ParameterBuilder parameterBuilder, final EncryptRule encryptRule, final boolean isQueryWithCipherColumn) {
         Optional<InsertColumnsSegment> insertColumnsSegment = optimizedStatement.getSQLStatement().findSQLSegment(InsertColumnsSegment.class);
         if (!(optimizedStatement instanceof InsertOptimizedStatement && insertColumnsSegment.isPresent())) {
             return Optional.absent();
@@ -46,14 +47,14 @@ public final class InsertAssistedColumnsTokenGenerator implements OptionalSQLTok
     
     private Optional<InsertAssistedColumnsToken> createInsertAssistedColumnsToken(
             final InsertOptimizedStatement optimizedStatement, final InsertColumnsSegment segment, final EncryptRule encryptRule) {
-        return encryptRule.getEncryptorEngine().getAssistedQueryColumns(optimizedStatement.getSQLStatement().getTables().getSingleTableName()).isEmpty() ? Optional.<InsertAssistedColumnsToken>absent()
+        return encryptRule.getEncryptEngine().getAssistedQueryColumns(optimizedStatement.getTables().getSingleTableName()).isEmpty() ? Optional.<InsertAssistedColumnsToken>absent()
                 : Optional.of(new InsertAssistedColumnsToken(segment.getStopIndex(), getQueryAssistedColumns(optimizedStatement, encryptRule), segment.getColumns().isEmpty()));
     }
     
     private Collection<String> getQueryAssistedColumns(final InsertOptimizedStatement optimizedStatement, final EncryptRule encryptRule) {
         Collection<String> result = new LinkedList<>();
         for (String each : optimizedStatement.getInsertColumns().getRegularColumnNames()) {
-            Optional<String> assistedColumnName = encryptRule.getEncryptorEngine().getAssistedQueryColumn(optimizedStatement.getSQLStatement().getTables().getSingleTableName(), each);
+            Optional<String> assistedColumnName = encryptRule.getEncryptEngine().getAssistedQueryColumn(optimizedStatement.getTables().getSingleTableName(), each);
             if (assistedColumnName.isPresent()) {
                 result.add(assistedColumnName.get());
             }

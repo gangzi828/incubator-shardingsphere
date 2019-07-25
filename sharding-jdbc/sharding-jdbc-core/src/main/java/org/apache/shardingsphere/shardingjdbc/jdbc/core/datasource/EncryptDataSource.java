@@ -21,14 +21,16 @@ import com.google.common.base.Optional;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.SneakyThrows;
-import org.apache.shardingsphere.api.config.encryptor.EncryptRuleConfiguration;
+import org.apache.shardingsphere.api.config.encrypt.EncryptRuleConfiguration;
 import org.apache.shardingsphere.core.constant.properties.ShardingProperties;
 import org.apache.shardingsphere.core.database.DatabaseTypes;
 import org.apache.shardingsphere.core.metadata.table.ColumnMetaData;
 import org.apache.shardingsphere.core.metadata.table.ShardingTableMetaData;
 import org.apache.shardingsphere.core.metadata.table.TableMetaData;
-import org.apache.shardingsphere.core.parse.entry.EncryptSQLParseEntry;
+import org.apache.shardingsphere.core.parse.SQLParseEngine;
+import org.apache.shardingsphere.core.parse.SQLParseEngineFactory;
 import org.apache.shardingsphere.core.rule.EncryptRule;
+import org.apache.shardingsphere.core.util.ConfigurationLogger;
 import org.apache.shardingsphere.shardingjdbc.jdbc.core.connection.EncryptConnection;
 import org.apache.shardingsphere.shardingjdbc.jdbc.unsupported.AbstractUnsupportedOperationDataSource;
 import org.apache.shardingsphere.spi.database.DatabaseType;
@@ -65,21 +67,23 @@ public class EncryptDataSource extends AbstractUnsupportedOperationDataSource im
     
     private final ShardingTableMetaData shardingTableMetaData;
     
-    private final EncryptSQLParseEntry parseEngine;
-    
     private final ShardingProperties shardingProperties;
+    
+    private final SQLParseEngine parseEngine;
     
     @Setter
     private PrintWriter logWriter = new PrintWriter(System.out);
     
     @SneakyThrows
     public EncryptDataSource(final DataSource dataSource, final EncryptRuleConfiguration encryptRuleConfiguration, final Properties props) {
+        ConfigurationLogger.log(encryptRuleConfiguration);
+        ConfigurationLogger.log(props);
         this.dataSource = dataSource;
         databaseType = getDatabaseType();
         encryptRule = new EncryptRule(encryptRuleConfiguration);
         shardingTableMetaData = createEncryptTableMetaData();
         shardingProperties = new ShardingProperties(null == props ? new Properties() : props);
-        parseEngine = new EncryptSQLParseEntry(databaseType, encryptRule, shardingTableMetaData);
+        parseEngine = SQLParseEngineFactory.getSQLParseEngine(databaseType);
     }
     
     @SneakyThrows

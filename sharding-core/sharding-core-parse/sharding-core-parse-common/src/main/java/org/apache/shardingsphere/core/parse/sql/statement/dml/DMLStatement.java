@@ -18,9 +18,7 @@
 package org.apache.shardingsphere.core.parse.sql.statement.dml;
 
 import lombok.Getter;
-import lombok.ToString;
-import org.apache.shardingsphere.core.parse.sql.context.condition.AndCondition;
-import org.apache.shardingsphere.core.parse.sql.statement.AbstractSQLStatement;
+import org.apache.shardingsphere.core.parse.sql.statement.generic.AbstractSQLStatement;
 
 /**
  * DML statement.
@@ -28,8 +26,5 @@ import org.apache.shardingsphere.core.parse.sql.statement.AbstractSQLStatement;
  * @author zhangliang
  */
 @Getter
-@ToString(callSuper = true)
 public abstract class DMLStatement extends AbstractSQLStatement {
-    
-    private final AndCondition encryptConditions = new AndCondition();
 }

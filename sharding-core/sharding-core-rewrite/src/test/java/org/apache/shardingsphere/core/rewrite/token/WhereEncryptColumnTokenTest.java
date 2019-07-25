@@ -19,7 +19,6 @@ package org.apache.shardingsphere.core.rewrite.token;
 
 import org.apache.shardingsphere.core.constant.ShardingOperator;
 import org.apache.shardingsphere.core.rewrite.token.pojo.WhereEncryptColumnToken;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Collections;
@@ -33,13 +32,9 @@ public class WhereEncryptColumnTokenTest {
     
     private WhereEncryptColumnToken whereEncryptColumnToken;
     
-    @Before
-    public void setUp() {
-    }
-    
     @Test
     public void assertToStringWithoutPlaceholderWithEqual() {
-        Map<Integer, Comparable<?>> indexValues = new LinkedHashMap<>();
+        Map<Integer, Object> indexValues = new LinkedHashMap<>();
         indexValues.put(0, "a");
         whereEncryptColumnToken = new WhereEncryptColumnToken(0, 0, "column_x", indexValues, Collections.<Integer>emptyList(), ShardingOperator.EQUAL);
         assertThat(whereEncryptColumnToken.toString(), is("column_x = 'a'"));
@@ -51,13 +46,13 @@ public class WhereEncryptColumnTokenTest {
     
     @Test
     public void assertToStringWithPlaceholderWithEqual() {
-        whereEncryptColumnToken = new WhereEncryptColumnToken(0, 0, "column_x", Collections.<Integer, Comparable<?>>emptyMap(), Collections.singletonList(0), ShardingOperator.EQUAL);
+        whereEncryptColumnToken = new WhereEncryptColumnToken(0, 0, "column_x", Collections.<Integer, Object>emptyMap(), Collections.singletonList(0), ShardingOperator.EQUAL);
         assertThat(whereEncryptColumnToken.toString(), is("column_x = ?"));
     }
     
     @Test
     public void assertToStringWithoutPlaceholderWithIn() {
-        Map<Integer, Comparable<?>> indexValues = new LinkedHashMap<>();
+        Map<Integer, Object> indexValues = new LinkedHashMap<>();
         indexValues.put(0, "a");
         indexValues.put(1, "b");
         whereEncryptColumnToken = new WhereEncryptColumnToken(0, 0, "column_x", indexValues, Collections.<Integer>emptyList(), ShardingOperator.IN);
@@ -66,7 +61,7 @@ public class WhereEncryptColumnTokenTest {
     
     @Test
     public void assertToStringWithPlaceholderWithIn() {
-        whereEncryptColumnToken = new WhereEncryptColumnToken(0, 0, "column_x", Collections.<Integer, Comparable<?>>emptyMap(), Collections.singletonList(0), ShardingOperator.IN);
+        whereEncryptColumnToken = new WhereEncryptColumnToken(0, 0, "column_x", Collections.<Integer, Object>emptyMap(), Collections.singletonList(0), ShardingOperator.IN);
         assertThat(whereEncryptColumnToken.toString(), is("column_x IN (?)"));
     }
 }
