@@ -17,11 +17,11 @@
 
 package org.apache.shardingsphere.core.optimize.sharding.segment.insert;
 
+import com.google.common.base.Optional;
 import lombok.Getter;
-import org.apache.shardingsphere.core.metadata.table.ShardingTableMetaData;
+import lombok.ToString;
+import org.apache.shardingsphere.core.metadata.table.TableMetas;
 import org.apache.shardingsphere.core.optimize.api.segment.InsertColumns;
-import org.apache.shardingsphere.core.parse.sql.segment.dml.assignment.AssignmentSegment;
-import org.apache.shardingsphere.core.parse.sql.segment.dml.column.ColumnSegment;
 import org.apache.shardingsphere.core.parse.sql.statement.dml.InsertStatement;
 import org.apache.shardingsphere.core.rule.ShardingRule;
 
@@ -32,68 +32,43 @@ import java.util.LinkedHashSet;
  * Insert columns for sharding.
  *
  * @author zhangliang
+ * @author panjuan
  */
+@ToString
 public final class ShardingInsertColumns implements InsertColumns {
-    
-    private final String generateKeyColumnName;
-    
-    private final Collection<String> assistedQueryColumnNames;
     
     @Getter
     private final Collection<String> regularColumnNames;
     
-    public ShardingInsertColumns(final ShardingRule shardingRule, final ShardingTableMetaData shardingTableMetaData, final InsertStatement insertStatement) {
-        generateKeyColumnName = shardingRule.findGenerateKeyColumnName(insertStatement.getTable().getTableName()).orNull();
-        assistedQueryColumnNames = shardingRule.getEncryptRule().getEncryptEngine().getAssistedQueryColumns(insertStatement.getTable().getTableName());
-        regularColumnNames = insertStatement.useDefaultColumns() ? getRegularColumnNamesFromMetaData(shardingTableMetaData, insertStatement) : getRegularColumnNamesFromSQLStatement(insertStatement);
+    public ShardingInsertColumns(final ShardingRule shardingRule, final TableMetas tableMetas, final InsertStatement insertStatement) {
+        regularColumnNames = insertStatement.useDefaultColumns()
+                ? getRegularColumnNamesFromMetaData(shardingRule, tableMetas, insertStatement) : getRegularColumnNamesFromSQLStatement(shardingRule, insertStatement);
     }
     
-    private Collection<String> getRegularColumnNamesFromMetaData(final ShardingTableMetaData shardingTableMetaData, final InsertStatement insertStatement) {
-        Collection<String> allColumnNames = shardingTableMetaData.getAllColumnNames(insertStatement.getTable().getTableName());
-        Collection<String> result = new LinkedHashSet<>(allColumnNames.size() - assistedQueryColumnNames.size());
-        for (String each : allColumnNames) {
-            if (!assistedQueryColumnNames.contains(each)) {
-                result.add(each);
-            }
-        }
-        if (isGenerateKeyFromMetaData(insertStatement, allColumnNames)) {
-            result.remove(generateKeyColumnName);
+    private Collection<String> getRegularColumnNamesFromMetaData(final ShardingRule shardingRule, final TableMetas tableMetas, final InsertStatement insertStatement) {
+        Collection<String> allColumnNames = tableMetas.getAllColumnNames(insertStatement.getTable().getTableName());
+        Collection<String> result = new LinkedHashSet<>(allColumnNames);
+        Optional<String> generateKeyColumnName = shardingRule.findGenerateKeyColumnName(insertStatement.getTable().getTableName());
+        if (generateKeyColumnName.isPresent() && isUseDefaultGenerateKeyFromMetaData(allColumnNames, insertStatement.getValueCountForPerGroup())) {
+            result.remove(generateKeyColumnName.get());
         }
         return result;
     }
     
-    private boolean isGenerateKeyFromMetaData(final InsertStatement insertStatement, final Collection<String> allColumnNames) {
-        return null != generateKeyColumnName && allColumnNames.size() - assistedQueryColumnNames.size() != insertStatement.getValueSize();
+    private boolean isUseDefaultGenerateKeyFromMetaData(final Collection<String> allColumnNames, final int valueCountForPerGroup) {
+        return allColumnNames.size() > valueCountForPerGroup;
     }
     
-    private Collection<String> getRegularColumnNamesFromSQLStatement(final InsertStatement insertStatement) {
-        Collection<String> result = new LinkedHashSet<>(insertStatement.getColumns().size(), 1);
-        for (ColumnSegment each : insertStatement.getColumns()) {
-            result.add(each.getName());
-        }
-        if (insertStatement.getSetAssignment().isPresent()) {
-            for (AssignmentSegment each : insertStatement.getSetAssignment().get().getAssignments()) {
-                result.add(each.getColumn().getName());
-            }
-        }
-        if (isGenerateKeyFromSQLStatement(insertStatement)) {
-            result.remove(generateKeyColumnName);
+    private Collection<String> getRegularColumnNamesFromSQLStatement(final ShardingRule shardingRule, final InsertStatement insertStatement) {
+        Collection<String> result = new LinkedHashSet<>(insertStatement.getColumnNames());
+        Optional<String> generateKeyColumnName = shardingRule.findGenerateKeyColumnName(insertStatement.getTable().getTableName());
+        if (generateKeyColumnName.isPresent() && isUseDefaultGenerateKeyFromSQLStatement(insertStatement)) {
+            result.remove(generateKeyColumnName.get());
         }
         return result;
     }
     
-    private boolean isGenerateKeyFromSQLStatement(final InsertStatement insertStatement) {
-        return null != generateKeyColumnName && insertStatement.getColumns().size() != insertStatement.getValueSize();
-    }
-    
-    @Override
-    public Collection<String> getAllColumnNames() {
-        Collection<String> result = new LinkedHashSet<>(regularColumnNames.size() + assistedQueryColumnNames.size() + 1);
-        result.addAll(regularColumnNames);
-        if (null != generateKeyColumnName && !regularColumnNames.contains(generateKeyColumnName)) {
-            result.add(generateKeyColumnName);
-        }
-        result.addAll(assistedQueryColumnNames);
-        return result;
+    private boolean isUseDefaultGenerateKeyFromSQLStatement(final InsertStatement insertStatement) {
+        return !insertStatement.getColumns().isEmpty() && insertStatement.getColumns().size() > insertStatement.getValueCountForPerGroup();
     }
 }

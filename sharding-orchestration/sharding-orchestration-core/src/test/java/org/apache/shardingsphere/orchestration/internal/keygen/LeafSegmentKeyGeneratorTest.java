@@ -17,15 +17,14 @@
 
 package org.apache.shardingsphere.orchestration.internal.keygen;
 
-import lombok.SneakyThrows;
 import org.junit.Test;
 
-import java.util.Properties;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.HashSet;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -34,14 +33,14 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 public final class LeafSegmentKeyGeneratorTest {
-
-    private LeafSegmentKeyGenerator leafSegmentKeyGenerator = new LeafSegmentKeyGenerator();
-
+    
+    private final LeafSegmentKeyGenerator leafSegmentKeyGenerator = new LeafSegmentKeyGenerator();
+    
     @Test
     public void assertGetProperties() {
         assertThat(leafSegmentKeyGenerator.getProperties().entrySet().size(), is(0));
     }
-
+    
     @Test
     public void assertSetProperties() {
         Properties properties = new Properties();
@@ -49,7 +48,7 @@ public final class LeafSegmentKeyGeneratorTest {
         leafSegmentKeyGenerator.setProperties(properties);
         assertThat(leafSegmentKeyGenerator.getProperties().get("key1"), is((Object) "value1"));
     }
-
+    
     @Test
     public void assertGenerateKeyWithSingleThread() {
         Properties properties = new Properties();
@@ -67,10 +66,9 @@ public final class LeafSegmentKeyGeneratorTest {
         }
         assertThat(actual, is(expected));
     }
-
+    
     @Test
-    @SneakyThrows
-    public void assertGenerateKeyWithMultipleThreads() {
+    public void assertGenerateKeyWithMultipleThreads() throws Exception {
         int threadNumber = Runtime.getRuntime().availableProcessors() << 1;
         ExecutorService executor = Executors.newFixedThreadPool(threadNumber);
         Properties properties = new Properties();
@@ -85,6 +83,7 @@ public final class LeafSegmentKeyGeneratorTest {
         int taskNumber = threadNumber << 2;
         for (int i = 0; i < taskNumber; i++) {
             actual.add(executor.submit(new Callable<Comparable<?>>() {
+
                 @Override
                 public Comparable<?> call() {
                     return leafSegmentKeyGenerator.generateKey();
@@ -93,10 +92,9 @@ public final class LeafSegmentKeyGeneratorTest {
         }
         assertThat(actual.size(), is(taskNumber));
     }
-
+    
     @Test
-    @SneakyThrows
-    public void assertGenerateKeyWithDigest() {
+    public void assertGenerateKeyWithDigest() throws Exception {
         int threadNumber = Runtime.getRuntime().availableProcessors() << 1;
         ExecutorService executor = Executors.newFixedThreadPool(threadNumber);
         Properties properties = new Properties();
@@ -111,6 +109,7 @@ public final class LeafSegmentKeyGeneratorTest {
         int taskNumber = threadNumber << 2;
         for (int i = 0; i < taskNumber; i++) {
             actual.add(executor.submit(new Callable<Comparable<?>>() {
+
                 @Override
                 public Comparable<?> call() {
                     return leafSegmentKeyGenerator.generateKey();
@@ -119,10 +118,9 @@ public final class LeafSegmentKeyGeneratorTest {
         }
         assertThat(actual.size(), is(taskNumber));
     }
-
+    
     @Test
-    @SneakyThrows
-    public void assertGenerateKeyWithDefaultStep() {
+    public void assertGenerateKeyWithDefaultStep() throws Exception {
         int threadNumber = Runtime.getRuntime().availableProcessors() << 1;
         ExecutorService executor = Executors.newFixedThreadPool(threadNumber);
         Properties properties = new Properties();
@@ -136,6 +134,7 @@ public final class LeafSegmentKeyGeneratorTest {
         int taskNumber = threadNumber << 2;
         for (int i = 0; i < taskNumber; i++) {
             actual.add(executor.submit(new Callable<Comparable<?>>() {
+
                 @Override
                 public Comparable<?> call() {
                     return leafSegmentKeyGenerator.generateKey();
@@ -144,10 +143,9 @@ public final class LeafSegmentKeyGeneratorTest {
         }
         assertThat(actual.size(), is(taskNumber));
     }
-
+    
     @Test
-    @SneakyThrows
-    public void assertGenerateKeyWithDefaultInitialValue() {
+    public void assertGenerateKeyWithDefaultInitialValue() throws Exception {
         int threadNumber = Runtime.getRuntime().availableProcessors() << 1;
         ExecutorService executor = Executors.newFixedThreadPool(threadNumber);
         Properties properties = new Properties();
@@ -161,6 +159,7 @@ public final class LeafSegmentKeyGeneratorTest {
         Set<Comparable<?>> actual = new HashSet<>();
         for (int i = 0; i < taskNumber; i++) {
             actual.add(executor.submit(new Callable<Comparable<?>>() {
+
                 @Override
                 public Comparable<?> call() {
                     return leafSegmentKeyGenerator.generateKey();
@@ -169,7 +168,7 @@ public final class LeafSegmentKeyGeneratorTest {
         }
         assertThat(actual.size(), is(taskNumber));
     }
-
+    
     @Test(expected = IllegalArgumentException.class)
     public void assertSetStepFailureWhenNegative() {
         Properties properties = new Properties();
@@ -182,7 +181,7 @@ public final class LeafSegmentKeyGeneratorTest {
         leafSegmentKeyGenerator.setProperties(properties);
         leafSegmentKeyGenerator.generateKey();
     }
-
+    
     @Test(expected = IllegalArgumentException.class)
     public void assertSetStepFailureWhenZero() {
         Properties properties = new Properties();
@@ -195,7 +194,7 @@ public final class LeafSegmentKeyGeneratorTest {
         leafSegmentKeyGenerator.setProperties(properties);
         leafSegmentKeyGenerator.generateKey();
     }
-
+    
     @Test(expected = IllegalArgumentException.class)
     public void assertSetStepFailureWhenTooMuch() {
         Properties properties = new Properties();
@@ -208,7 +207,7 @@ public final class LeafSegmentKeyGeneratorTest {
         leafSegmentKeyGenerator.setProperties(properties);
         leafSegmentKeyGenerator.generateKey();
     }
-
+    
     @Test(expected = IllegalArgumentException.class)
     public void assertSetInitialValueFailureWhenNegative() {
         Properties properties = new Properties();
@@ -221,7 +220,7 @@ public final class LeafSegmentKeyGeneratorTest {
         leafSegmentKeyGenerator.setProperties(properties);
         leafSegmentKeyGenerator.generateKey();
     }
-
+    
     @Test(expected = IllegalArgumentException.class)
     public void assertSetInitialValueFailureWhenTooMuch() {
         Properties properties = new Properties();
@@ -234,7 +233,7 @@ public final class LeafSegmentKeyGeneratorTest {
         leafSegmentKeyGenerator.setProperties(properties);
         leafSegmentKeyGenerator.generateKey();
     }
-
+    
     @Test(expected = IllegalArgumentException.class)
     public void assertSetServerListFailureWhenNull() {
         Properties properties = new Properties();
@@ -246,7 +245,7 @@ public final class LeafSegmentKeyGeneratorTest {
         leafSegmentKeyGenerator.setProperties(properties);
         leafSegmentKeyGenerator.generateKey();
     }
-
+    
     @Test(expected = IllegalArgumentException.class)
     public void assertSetServerListFailureWhenArgumentEmpty() {
         Properties properties = new Properties();
@@ -259,7 +258,7 @@ public final class LeafSegmentKeyGeneratorTest {
         leafSegmentKeyGenerator.setProperties(properties);
         leafSegmentKeyGenerator.generateKey();
     }
-
+    
     @Test(expected = IllegalArgumentException.class)
     public void assertSetLeafKeyFailureWhenArgumentIllegal() {
         Properties properties = new Properties();
@@ -272,7 +271,7 @@ public final class LeafSegmentKeyGeneratorTest {
         leafSegmentKeyGenerator.setProperties(properties);
         leafSegmentKeyGenerator.generateKey();
     }
-
+    
     @Test(expected = IllegalArgumentException.class)
     public void assertSetLeafKeyFailureWhenArgumentEmpty() {
         Properties properties = new Properties();
@@ -285,7 +284,7 @@ public final class LeafSegmentKeyGeneratorTest {
         leafSegmentKeyGenerator.setProperties(properties);
         leafSegmentKeyGenerator.generateKey();
     }
-
+    
     @Test(expected = IllegalArgumentException.class)
     public void assertSetLeafKeyFailureWhenNull() {
         Properties properties = new Properties();
@@ -297,7 +296,7 @@ public final class LeafSegmentKeyGeneratorTest {
         leafSegmentKeyGenerator.setProperties(properties);
         leafSegmentKeyGenerator.generateKey();
     }
-
+    
     @Test(expected = IllegalArgumentException.class)
     public void assertSetRegistryCenterTypeFailureWhenWrongType() {
         Properties properties = new Properties();
@@ -310,5 +309,4 @@ public final class LeafSegmentKeyGeneratorTest {
         leafSegmentKeyGenerator.setProperties(properties);
         leafSegmentKeyGenerator.generateKey();
     }
-
 }

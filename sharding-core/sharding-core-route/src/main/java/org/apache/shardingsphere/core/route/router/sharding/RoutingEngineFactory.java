@@ -20,7 +20,7 @@ package org.apache.shardingsphere.core.route.router.sharding;
 import com.google.common.base.Preconditions;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import org.apache.shardingsphere.core.metadata.datasource.ShardingDataSourceMetaData;
+import org.apache.shardingsphere.core.metadata.datasource.DataSourceMetas;
 import org.apache.shardingsphere.core.optimize.api.statement.OptimizedStatement;
 import org.apache.shardingsphere.core.optimize.sharding.statement.dml.ShardingConditionOptimizedStatement;
 import org.apache.shardingsphere.core.parse.sql.statement.SQLStatement;
@@ -36,7 +36,7 @@ import org.apache.shardingsphere.core.parse.sql.statement.tcl.TCLStatement;
 import org.apache.shardingsphere.core.route.type.RoutingEngine;
 import org.apache.shardingsphere.core.route.type.broadcast.DataSourceGroupBroadcastRoutingEngine;
 import org.apache.shardingsphere.core.route.type.broadcast.DatabaseBroadcastRoutingEngine;
-import org.apache.shardingsphere.core.route.type.broadcast.InstanceBroadcastRoutingEngine;
+import org.apache.shardingsphere.core.route.type.broadcast.MasterInstanceBroadcastRoutingEngine;
 import org.apache.shardingsphere.core.route.type.broadcast.TableBroadcastRoutingEngine;
 import org.apache.shardingsphere.core.route.type.complex.ComplexRoutingEngine;
 import org.apache.shardingsphere.core.route.type.defaultdb.DefaultDatabaseRoutingEngine;
@@ -59,11 +59,11 @@ public final class RoutingEngineFactory {
      * Create new instance of routing engine.
      * 
      * @param shardingRule sharding rule
-     * @param shardingDataSourceMetaData sharding data source meta data
+     * @param dataSourceMetas data source metas
      * @param optimizedStatement optimized statement
      * @return new instance of routing engine
      */
-    public static RoutingEngine newInstance(final ShardingRule shardingRule, final ShardingDataSourceMetaData shardingDataSourceMetaData, final OptimizedStatement optimizedStatement) {
+    public static RoutingEngine newInstance(final ShardingRule shardingRule, final DataSourceMetas dataSourceMetas, final OptimizedStatement optimizedStatement) {
         SQLStatement sqlStatement = optimizedStatement.getSQLStatement();
         Collection<String> tableNames = optimizedStatement.getTables().getTableNames();
         if (sqlStatement instanceof TCLStatement) {
@@ -76,7 +76,7 @@ public final class RoutingEngineFactory {
             return getDALRoutingEngine(shardingRule, sqlStatement, tableNames);
         }
         if (sqlStatement instanceof DCLStatement) {
-            return getDCLRoutingEngine(shardingRule, optimizedStatement, shardingDataSourceMetaData);
+            return getDCLRoutingEngine(shardingRule, optimizedStatement, dataSourceMetas);
         }
         if (shardingRule.isAllInDefaultDataSource(tableNames)) {
             return new DefaultDatabaseRoutingEngine(shardingRule, tableNames);
@@ -105,9 +105,9 @@ public final class RoutingEngineFactory {
         return new DataSourceGroupBroadcastRoutingEngine(shardingRule);
     }
     
-    private static RoutingEngine getDCLRoutingEngine(final ShardingRule shardingRule, final OptimizedStatement optimizedStatement, final ShardingDataSourceMetaData shardingDataSourceMetaData) {
+    private static RoutingEngine getDCLRoutingEngine(final ShardingRule shardingRule, final OptimizedStatement optimizedStatement, final DataSourceMetas dataSourceMetas) {
         return isGrantForSingleTable(optimizedStatement) 
-                ? new TableBroadcastRoutingEngine(shardingRule, optimizedStatement) : new InstanceBroadcastRoutingEngine(shardingRule, shardingDataSourceMetaData);
+                ? new TableBroadcastRoutingEngine(shardingRule, optimizedStatement) : new MasterInstanceBroadcastRoutingEngine(shardingRule, dataSourceMetas);
     }
     
     private static boolean isGrantForSingleTable(final OptimizedStatement optimizedStatement) {

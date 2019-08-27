@@ -21,11 +21,14 @@ import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import lombok.RequiredArgsConstructor;
 import org.apache.shardingsphere.api.hint.HintManager;
-import org.apache.shardingsphere.core.metadata.ShardingMetaData;
+import org.apache.shardingsphere.core.metadata.ShardingSphereMetaData;
 import org.apache.shardingsphere.core.optimize.api.statement.OptimizedStatement;
+import org.apache.shardingsphere.core.optimize.encrypt.EncryptOptimizeEngineFactory;
+import org.apache.shardingsphere.core.optimize.encrypt.statement.EncryptOptimizedStatement;
 import org.apache.shardingsphere.core.optimize.sharding.ShardingOptimizeEngineFactory;
 import org.apache.shardingsphere.core.optimize.sharding.segment.condition.ShardingCondition;
 import org.apache.shardingsphere.core.optimize.sharding.segment.condition.ShardingConditions;
+import org.apache.shardingsphere.core.optimize.sharding.statement.ShardingOptimizedStatement;
 import org.apache.shardingsphere.core.optimize.sharding.statement.dml.ShardingConditionOptimizedStatement;
 import org.apache.shardingsphere.core.optimize.sharding.statement.dml.ShardingInsertOptimizedStatement;
 import org.apache.shardingsphere.core.optimize.sharding.statement.dml.ShardingSelectOptimizedStatement;
@@ -55,7 +58,7 @@ public final class ParsingSQLRouter implements ShardingRouter {
     
     private final ShardingRule shardingRule;
     
-    private final ShardingMetaData shardingMetaData;
+    private final ShardingSphereMetaData metaData;
     
     private final SQLParseEngine parseEngine;
     
@@ -69,20 +72,22 @@ public final class ParsingSQLRouter implements ShardingRouter {
     @SuppressWarnings("unchecked")
     @Override
     public SQLRouteResult route(final String logicSQL, final List<Object> parameters, final SQLStatement sqlStatement) {
-        OptimizedStatement optimizedStatement = ShardingOptimizeEngineFactory.newInstance(sqlStatement).optimize(shardingRule, shardingMetaData.getTable(), logicSQL, parameters, sqlStatement);
-        boolean needMergeShardingValues = isNeedMergeShardingValues(optimizedStatement);
-        if (optimizedStatement instanceof ShardingConditionOptimizedStatement && needMergeShardingValues) {
-            checkSubqueryShardingValues(optimizedStatement, ((ShardingConditionOptimizedStatement) optimizedStatement).getShardingConditions());
-            mergeShardingConditions(((ShardingConditionOptimizedStatement) optimizedStatement).getShardingConditions());
+        ShardingOptimizedStatement shardingStatement = ShardingOptimizeEngineFactory.newInstance(sqlStatement).optimize(shardingRule, metaData.getTables(), logicSQL, parameters, sqlStatement);
+        boolean needMergeShardingValues = isNeedMergeShardingValues(shardingStatement);
+        if (shardingStatement instanceof ShardingConditionOptimizedStatement && needMergeShardingValues) {
+            checkSubqueryShardingValues(shardingStatement, ((ShardingConditionOptimizedStatement) shardingStatement).getShardingConditions());
+            mergeShardingConditions(((ShardingConditionOptimizedStatement) shardingStatement).getShardingConditions());
         }
-        RoutingResult routingResult = RoutingEngineFactory.newInstance(shardingRule, shardingMetaData.getDataSource(), optimizedStatement).route();
+        RoutingResult routingResult = RoutingEngineFactory.newInstance(shardingRule, metaData.getDataSources(), shardingStatement).route();
         if (needMergeShardingValues) {
             Preconditions.checkState(1 == routingResult.getRoutingUnits().size(), "Must have one sharding with subquery.");
         }
-        if (optimizedStatement instanceof ShardingInsertOptimizedStatement) {
-            setGeneratedValues((ShardingInsertOptimizedStatement) optimizedStatement);
+        if (shardingStatement instanceof ShardingInsertOptimizedStatement) {
+            setGeneratedValues((ShardingInsertOptimizedStatement) shardingStatement);
         }
-        SQLRouteResult result = new SQLRouteResult(optimizedStatement);
+        EncryptOptimizedStatement encryptStatement = EncryptOptimizeEngineFactory.newInstance(sqlStatement)
+                .optimize(shardingRule.getEncryptRule(), metaData.getTables(), logicSQL, parameters, sqlStatement);
+        SQLRouteResult result = new SQLRouteResult(shardingStatement, encryptStatement);
         result.setRoutingResult(routingResult);
         return result;
     }

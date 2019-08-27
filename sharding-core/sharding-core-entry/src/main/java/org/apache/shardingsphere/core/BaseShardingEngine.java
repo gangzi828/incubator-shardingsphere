@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.apache.shardingsphere.api.hint.HintManager;
 import org.apache.shardingsphere.core.constant.properties.ShardingProperties;
 import org.apache.shardingsphere.core.constant.properties.ShardingPropertiesConstant;
-import org.apache.shardingsphere.core.metadata.ShardingMetaData;
+import org.apache.shardingsphere.core.metadata.ShardingSphereMetaData;
 import org.apache.shardingsphere.core.rewrite.SQLRewriteEngine;
 import org.apache.shardingsphere.core.route.RouteUnit;
 import org.apache.shardingsphere.core.route.SQLLogger;
@@ -54,7 +54,7 @@ public abstract class BaseShardingEngine {
     
     private final ShardingProperties shardingProperties;
     
-    private final ShardingMetaData metaData;
+    private final ShardingSphereMetaData metaData;
     
     private final SPIRoutingHook routingHook = new SPIRoutingHook();
     
@@ -71,7 +71,7 @@ public abstract class BaseShardingEngine {
         result.getRouteUnits().addAll(HintManager.isDatabaseShardingOnly() ? convert(sql, clonedParameters, result) : rewriteAndConvert(sql, clonedParameters, result));
         if (shardingProperties.getValue(ShardingPropertiesConstant.SQL_SHOW)) {
             boolean showSimple = shardingProperties.getValue(ShardingPropertiesConstant.SQL_SIMPLE);
-            SQLLogger.logSQL(sql, showSimple, result.getOptimizedStatement(), result.getRouteUnits());
+            SQLLogger.logSQL(sql, showSimple, result.getShardingStatement(), result.getRouteUnits());
         }
         return result;
     }
@@ -84,7 +84,7 @@ public abstract class BaseShardingEngine {
         routingHook.start(sql);
         try {
             SQLRouteResult result = route(sql, clonedParameters);
-            routingHook.finishSuccess(result, metaData.getTable());
+            routingHook.finishSuccess(result, metaData.getTables());
             return result;
             // CHECKSTYLE:OFF
         } catch (final Exception ex) {
@@ -108,7 +108,7 @@ public abstract class BaseShardingEngine {
         Collection<RouteUnit> result = new LinkedHashSet<>();
         for (RoutingUnit each : sqlRouteResult.getRoutingResult().getRoutingUnits()) {
             result.add(new RouteUnit(each.getDataSourceName(), 
-                    rewriteEngine.generateSQL(each, getLogicAndActualTables(each, sqlRouteResult.getOptimizedStatement().getTables().getTableNames()))));
+                    rewriteEngine.generateSQL(each, getLogicAndActualTables(each, sqlRouteResult.getShardingStatement().getTables().getTableNames()))));
         }
         return result;
     }

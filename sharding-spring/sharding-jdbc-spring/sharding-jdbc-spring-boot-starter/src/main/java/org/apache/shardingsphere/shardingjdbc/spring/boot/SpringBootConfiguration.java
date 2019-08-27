@@ -36,7 +36,9 @@ import org.apache.shardingsphere.shardingjdbc.spring.boot.sharding.ShardingRuleC
 import org.apache.shardingsphere.shardingjdbc.spring.boot.sharding.SpringBootShardingRuleConfigurationProperties;
 import org.apache.shardingsphere.shardingjdbc.spring.boot.util.DataSourceUtil;
 import org.apache.shardingsphere.shardingjdbc.spring.boot.util.PropertyUtil;
+import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Bean;
@@ -55,7 +57,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Spring boot sharding and master-slave configuration.
+ * Spring boot starter configuration.
  *
  * @author caohao
  * @author panjuan
@@ -66,30 +68,32 @@ import java.util.Map;
         SpringBootShardingRuleConfigurationProperties.class, 
         SpringBootMasterSlaveRuleConfigurationProperties.class, SpringBootEncryptRuleConfigurationProperties.class, SpringBootPropertiesConfigurationProperties.class})
 @ConditionalOnProperty(prefix = "spring.shardingsphere", name = "enabled", havingValue = "true", matchIfMissing = true)
+@AutoConfigureBefore(DataSourceAutoConfiguration.class)
 @RequiredArgsConstructor
 public class SpringBootConfiguration implements EnvironmentAware {
     
-    private final SpringBootShardingRuleConfigurationProperties shardingProperties;
+    private final SpringBootShardingRuleConfigurationProperties shardingRule;
     
-    private final SpringBootMasterSlaveRuleConfigurationProperties masterSlaveProperties;
+    private final SpringBootMasterSlaveRuleConfigurationProperties masterSlaveRule;
     
-    private final SpringBootEncryptRuleConfigurationProperties encryptProperties;
+    private final SpringBootEncryptRuleConfigurationProperties encryptRule;
     
-    private final SpringBootPropertiesConfigurationProperties propMapProperties;
+    private final SpringBootPropertiesConfigurationProperties props;
     
     private final Map<String, DataSource> dataSourceMap = new LinkedHashMap<>();
     
     private final String jndiName = "jndi-name";
     
     /**
-     * Get encrypt data source bean.
+     * Get sharding data source bean.
      *
      * @return data source bean
+     * @throws SQLException SQL exception
      */
     @Bean
-    @Conditional(EncryptRuleCondition.class)
-    public DataSource encryptDataSource() {
-        return EncryptDataSourceFactory.createDataSource(dataSourceMap.values().iterator().next(), new EncryptRuleConfigurationYamlSwapper().swap(encryptProperties), propMapProperties.getProps());
+    @Conditional(ShardingRuleCondition.class)
+    public DataSource shardingDataSource() throws SQLException {
+        return ShardingDataSourceFactory.createDataSource(dataSourceMap, new ShardingRuleConfigurationYamlSwapper().swap(shardingRule), props.getProps());
     }
     
     /**
@@ -101,19 +105,19 @@ public class SpringBootConfiguration implements EnvironmentAware {
     @Bean
     @Conditional(MasterSlaveRuleCondition.class)
     public DataSource masterSlaveDataSource() throws SQLException {
-        return MasterSlaveDataSourceFactory.createDataSource(dataSourceMap, new MasterSlaveRuleConfigurationYamlSwapper().swap(masterSlaveProperties), propMapProperties.getProps());
+        return MasterSlaveDataSourceFactory.createDataSource(dataSourceMap, new MasterSlaveRuleConfigurationYamlSwapper().swap(masterSlaveRule), props.getProps());
     }
     
     /**
-     * Get sharding data source bean.
+     * Get encrypt data source bean.
      *
      * @return data source bean
      * @throws SQLException SQL exception
      */
     @Bean
-    @Conditional(ShardingRuleCondition.class)
-    public DataSource shardingDataSource() throws SQLException {
-        return ShardingDataSourceFactory.createDataSource(dataSourceMap, new ShardingRuleConfigurationYamlSwapper().swap(shardingProperties), propMapProperties.getProps());
+    @Conditional(EncryptRuleCondition.class)
+    public DataSource encryptDataSource() throws SQLException {
+        return EncryptDataSourceFactory.createDataSource(dataSourceMap.values().iterator().next(), new EncryptRuleConfigurationYamlSwapper().swap(encryptRule), props.getProps());
     }
     
     @Override

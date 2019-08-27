@@ -19,13 +19,17 @@ package org.apache.shardingsphere.core.optimize.sharding.engnie.dml;
 
 import com.google.common.base.Optional;
 import com.google.common.collect.Range;
-import org.apache.shardingsphere.core.metadata.table.ShardingTableMetaData;
+import org.apache.shardingsphere.core.metadata.column.ColumnMetaData;
+import org.apache.shardingsphere.core.metadata.table.TableMetaData;
+import org.apache.shardingsphere.core.metadata.table.TableMetas;
 import org.apache.shardingsphere.core.optimize.sharding.segment.condition.ShardingCondition;
 import org.apache.shardingsphere.core.optimize.sharding.segment.condition.ShardingConditions;
+import org.apache.shardingsphere.core.optimize.sharding.segment.select.item.SelectItems;
 import org.apache.shardingsphere.core.parse.sql.segment.dml.column.ColumnSegment;
 import org.apache.shardingsphere.core.parse.sql.segment.dml.expr.ExpressionSegment;
 import org.apache.shardingsphere.core.parse.sql.segment.dml.expr.simple.LiteralExpressionSegment;
 import org.apache.shardingsphere.core.parse.sql.segment.dml.item.SelectItemsSegment;
+import org.apache.shardingsphere.core.parse.sql.segment.dml.item.ShorthandSelectItemSegment;
 import org.apache.shardingsphere.core.parse.sql.segment.dml.predicate.AndPredicate;
 import org.apache.shardingsphere.core.parse.sql.segment.dml.predicate.PredicateSegment;
 import org.apache.shardingsphere.core.parse.sql.segment.dml.predicate.WhereSegment;
@@ -36,7 +40,6 @@ import org.apache.shardingsphere.core.parse.sql.segment.generic.TableSegment;
 import org.apache.shardingsphere.core.parse.sql.statement.dml.SelectStatement;
 import org.apache.shardingsphere.core.rule.EncryptRule;
 import org.apache.shardingsphere.core.rule.ShardingRule;
-import org.apache.shardingsphere.core.strategy.encrypt.EncryptEngine;
 import org.apache.shardingsphere.core.strategy.route.value.ListRouteValue;
 import org.apache.shardingsphere.core.strategy.route.value.RangeRouteValue;
 import org.apache.shardingsphere.core.strategy.route.value.RouteValue;
@@ -67,7 +70,7 @@ public final class ShardingSelectOptimizeEngineTest {
     private ShardingRule shardingRule;
     
     @Mock
-    private ShardingTableMetaData shardingTableMetaData;
+    private TableMetas tableMetas;
     
     private SelectStatement selectStatement;
     
@@ -75,9 +78,7 @@ public final class ShardingSelectOptimizeEngineTest {
     public void setUp() {
         when(shardingRule.isShardingColumn("column", "tbl")).thenReturn(true);
         EncryptRule encryptRule = mock(EncryptRule.class);
-        EncryptEngine encryptEngine = mock(EncryptEngine.class);
-        when(encryptEngine.getShardingEncryptor("tbl", "column")).thenReturn(Optional.<ShardingEncryptor>absent());
-        when(encryptRule.getEncryptEngine()).thenReturn(encryptEngine);
+        when(encryptRule.getShardingEncryptor("tbl", "column")).thenReturn(Optional.<ShardingEncryptor>absent());
         when(shardingRule.getEncryptRule()).thenReturn(encryptRule);
         selectStatement = new SelectStatement();
         selectStatement.getAllSQLSegments().add(new TableSegment(0, 0, "tbl"));
@@ -95,7 +96,7 @@ public final class ShardingSelectOptimizeEngineTest {
         WhereSegment whereSegment = new WhereSegment(0, 0, 0);
         whereSegment.getAndPredicates().addAll(andPredicates);
         selectStatement.setWhere(whereSegment);
-        ShardingConditions shardingConditions = new ShardingSelectOptimizeEngine().optimize(shardingRule, shardingTableMetaData, "", Collections.emptyList(), selectStatement).getShardingConditions();
+        ShardingConditions shardingConditions = new ShardingSelectOptimizeEngine().optimize(shardingRule, tableMetas, "", Collections.emptyList(), selectStatement).getShardingConditions();
         assertTrue(shardingConditions.isAlwaysFalse());
     }
     
@@ -112,7 +113,7 @@ public final class ShardingSelectOptimizeEngineTest {
         WhereSegment whereSegment = new WhereSegment(0, 0, 0);
         whereSegment.getAndPredicates().addAll(andPredicates);
         selectStatement.setWhere(whereSegment);
-        ShardingConditions shardingConditions = new ShardingSelectOptimizeEngine().optimize(shardingRule, shardingTableMetaData, "", Collections.emptyList(), selectStatement).getShardingConditions();
+        ShardingConditions shardingConditions = new ShardingSelectOptimizeEngine().optimize(shardingRule, tableMetas, "", Collections.emptyList(), selectStatement).getShardingConditions();
         assertTrue(shardingConditions.isAlwaysFalse());
     }
     
@@ -129,7 +130,7 @@ public final class ShardingSelectOptimizeEngineTest {
         WhereSegment whereSegment = new WhereSegment(0, 0, 0);
         whereSegment.getAndPredicates().addAll(andPredicates);
         selectStatement.setWhere(whereSegment);
-        ShardingConditions shardingConditions = new ShardingSelectOptimizeEngine().optimize(shardingRule, shardingTableMetaData, "", Collections.emptyList(), selectStatement).getShardingConditions();
+        ShardingConditions shardingConditions = new ShardingSelectOptimizeEngine().optimize(shardingRule, tableMetas, "", Collections.emptyList(), selectStatement).getShardingConditions();
         assertTrue(shardingConditions.isAlwaysFalse());
     }
     
@@ -146,7 +147,7 @@ public final class ShardingSelectOptimizeEngineTest {
         WhereSegment whereSegment = new WhereSegment(0, 0, 0);
         whereSegment.getAndPredicates().addAll(andPredicates);
         selectStatement.setWhere(whereSegment);
-        ShardingConditions shardingConditions = new ShardingSelectOptimizeEngine().optimize(shardingRule, shardingTableMetaData, "", Collections.emptyList(), selectStatement).getShardingConditions();
+        ShardingConditions shardingConditions = new ShardingSelectOptimizeEngine().optimize(shardingRule, tableMetas, "", Collections.emptyList(), selectStatement).getShardingConditions();
         assertFalse(shardingConditions.isAlwaysFalse());
         ShardingCondition shardingCondition = shardingConditions.getConditions().get(0);
         RouteValue shardingValue = shardingCondition.getRouteValues().get(0);
@@ -169,7 +170,7 @@ public final class ShardingSelectOptimizeEngineTest {
         WhereSegment whereSegment = new WhereSegment(0, 0, 0);
         whereSegment.getAndPredicates().addAll(andPredicates);
         selectStatement.setWhere(whereSegment);
-        ShardingConditions shardingConditions = new ShardingSelectOptimizeEngine().optimize(shardingRule, shardingTableMetaData, "", Collections.emptyList(), selectStatement).getShardingConditions();
+        ShardingConditions shardingConditions = new ShardingSelectOptimizeEngine().optimize(shardingRule, tableMetas, "", Collections.emptyList(), selectStatement).getShardingConditions();
         assertFalse(shardingConditions.isAlwaysFalse());
         ShardingCondition shardingCondition = shardingConditions.getConditions().get(0);
         RouteValue shardingValue = shardingCondition.getRouteValues().get(0);
@@ -192,7 +193,7 @@ public final class ShardingSelectOptimizeEngineTest {
         WhereSegment whereSegment = new WhereSegment(0, 0, 0);
         whereSegment.getAndPredicates().addAll(andPredicates);
         selectStatement.setWhere(whereSegment);
-        ShardingConditions shardingConditions = new ShardingSelectOptimizeEngine().optimize(shardingRule, shardingTableMetaData, "", Collections.emptyList(), selectStatement).getShardingConditions();
+        ShardingConditions shardingConditions = new ShardingSelectOptimizeEngine().optimize(shardingRule, tableMetas, "", Collections.emptyList(), selectStatement).getShardingConditions();
         assertFalse(shardingConditions.isAlwaysFalse());
         ShardingCondition shardingCondition = shardingConditions.getConditions().get(0);
         RouteValue shardingValue = shardingCondition.getRouteValues().get(0);
@@ -205,5 +206,32 @@ public final class ShardingSelectOptimizeEngineTest {
         ColumnSegment result = new ColumnSegment(0, 0, "column");
         result.setOwner(new TableSegment(0, 0, "tbl"));
         return result;
+    }
+    
+    @Test
+    public void assertOptimizeWithShorthandItems() {
+        when(tableMetas.get("tbl")).thenReturn(createTableMetaData());
+        selectStatement.setSelectItems(createSelectItemsSegment());
+        selectStatement.getTables().add(new TableSegment(0, 0, "tbl"));
+        SelectItems selectItems = new ShardingSelectOptimizeEngine().optimize(shardingRule, tableMetas, "", Collections.emptyList(), selectStatement).getSelectItems();
+        assertThat(selectItems.getColumnLabels().size(), is(2));
+        assertThat(selectItems.getColumnLabels().get(0), is("id"));
+        assertThat(selectItems.getColumnLabels().get(1), is("user_id"));
+    }
+    
+    private SelectItemsSegment createSelectItemsSegment() {
+        TableSegment owner = mock(TableSegment.class);
+        when(owner.getTableName()).thenReturn("tbl");
+        ShorthandSelectItemSegment shorthandSelectItemSegment = new ShorthandSelectItemSegment(0, 0, "tbl.*");
+        shorthandSelectItemSegment.setOwner(owner);
+        SelectItemsSegment result = new SelectItemsSegment(0, 0, false);
+        result.getSelectItems().add(shorthandSelectItemSegment);
+        return result;
+    }
+    
+    private TableMetaData createTableMetaData() {
+        ColumnMetaData idColumnMetaData = new ColumnMetaData("id", "int", true);
+        ColumnMetaData nameColumnMetaData = new ColumnMetaData("user_id", "int", false);
+        return new TableMetaData(Arrays.asList(idColumnMetaData, nameColumnMetaData), Arrays.asList("id", "user_id"));
     }
 }

@@ -20,12 +20,12 @@ package org.apache.shardingsphere.core.optimize.sharding.segment.select.item.eng
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import lombok.RequiredArgsConstructor;
-import org.apache.shardingsphere.core.metadata.table.ShardingTableMetaData;
+import org.apache.shardingsphere.core.metadata.table.TableMetas;
 import org.apache.shardingsphere.core.optimize.api.segment.Table;
 import org.apache.shardingsphere.core.optimize.api.segment.Tables;
 import org.apache.shardingsphere.core.optimize.sharding.segment.select.groupby.GroupBy;
 import org.apache.shardingsphere.core.optimize.sharding.segment.select.item.DerivedColumn;
-import org.apache.shardingsphere.core.optimize.sharding.segment.select.item.DerivedCommonSelectItem;
+import org.apache.shardingsphere.core.optimize.sharding.segment.select.item.DerivedSelectItem;
 import org.apache.shardingsphere.core.optimize.sharding.segment.select.item.SelectItem;
 import org.apache.shardingsphere.core.optimize.sharding.segment.select.item.SelectItems;
 import org.apache.shardingsphere.core.optimize.sharding.segment.select.item.ShorthandSelectItem;
@@ -46,17 +46,18 @@ import java.util.LinkedList;
  * Select items engine.
  *
  * @author zhangliang
+ * @author sunbufu
  */
 @RequiredArgsConstructor
 public final class SelectItemsEngine {
     
-    private final ShardingTableMetaData shardingTableMetaData;
+    private final TableMetas tableMetas;
     
     private final SelectItemEngine selectItemEngine = new SelectItemEngine();
     
     /**
      * Create select items.
-     * 
+     *
      * @param sql SQL
      * @param selectStatement SQL statement
      * @param groupBy group by
@@ -66,7 +67,8 @@ public final class SelectItemsEngine {
     public SelectItems createSelectItems(final String sql, final SelectStatement selectStatement, final GroupBy groupBy, final OrderBy orderBy) {
         SelectItemsSegment selectItemsSegment = selectStatement.getSelectItems();
         Collection<SelectItem> items = getSelectItemList(sql, selectItemsSegment);
-        SelectItems result = new SelectItems(items, selectItemsSegment.isDistinctRow(), selectItemsSegment.getStopIndex());
+        SelectItems result = new SelectItems(
+                selectItemsSegment.getStartIndex(), selectItemsSegment.getStopIndex(), selectItemsSegment.isDistinctRow(), items, selectStatement.getTables(), tableMetas);
         Tables tables = new Tables(selectStatement);
         result.getItems().addAll(getDerivedGroupByColumns(tables, items, groupBy));
         result.getItems().addAll(getDerivedOrderByColumns(tables, items, orderBy));
@@ -97,7 +99,7 @@ public final class SelectItemsEngine {
         int derivedColumnOffset = 0;
         for (OrderByItem each : orderItems) {
             if (!containsItem(tables, selectItems, each.getSegment())) {
-                result.add(new DerivedCommonSelectItem(((TextOrderByItemSegment) each.getSegment()).getText(), derivedColumn.getDerivedColumnAlias(derivedColumnOffset++)));
+                result.add(new DerivedSelectItem(((TextOrderByItemSegment) each.getSegment()).getText(), derivedColumn.getDerivedColumnAlias(derivedColumnOffset++)));
             }
         }
         return result;
@@ -170,7 +172,7 @@ public final class SelectItemsEngine {
     private boolean isSameSelectItem(final Tables tables, final ShorthandSelectItem shorthandSelectItem, final ColumnOrderByItemSegment orderItem) {
         Preconditions.checkState(shorthandSelectItem.getOwner().isPresent());
         Optional<Table> table = tables.find(shorthandSelectItem.getOwner().get());
-        return table.isPresent() && shardingTableMetaData.containsColumn(table.get().getName(), orderItem.getColumn().getName());
+        return table.isPresent() && tableMetas.containsColumn(table.get().getName(), orderItem.getColumn().getName());
     }
     
     private boolean containsItemInSelectItems(final Collection<SelectItem> items, final OrderByItemSegment orderItem) {

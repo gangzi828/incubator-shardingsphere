@@ -20,14 +20,18 @@ package org.apache.shardingsphere.core.parse.sql.statement.dml;
 import com.google.common.base.Optional;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.shardingsphere.core.parse.sql.segment.dml.assignment.AssignmentSegment;
 import org.apache.shardingsphere.core.parse.sql.segment.dml.assignment.InsertValuesSegment;
 import org.apache.shardingsphere.core.parse.sql.segment.dml.assignment.SetAssignmentsSegment;
 import org.apache.shardingsphere.core.parse.sql.segment.dml.column.ColumnSegment;
+import org.apache.shardingsphere.core.parse.sql.segment.dml.expr.ExpressionSegment;
 import org.apache.shardingsphere.core.parse.sql.segment.generic.TableSegment;
 import org.apache.shardingsphere.core.parse.sql.statement.generic.TableSegmentAvailable;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Insert statement.
@@ -67,11 +71,45 @@ public final class InsertStatement extends DMLStatement implements TableSegmentA
     }
     
     /**
-     * Get value size.
-     * 
-     * @return value size
+     * Get column names.
+     *
+     * @return column names
      */
-    public int getValueSize() {
+    public Collection<String> getColumnNames() {
+        return null == setAssignment ? getColumnNamesForInsertColumns() : getColumnNamesForSetAssignment();
+    }
+    
+    private Collection<String> getColumnNamesForInsertColumns() {
+        Collection<String> result = new LinkedList<>();
+        for (ColumnSegment each : columns) {
+            result.add(each.getName());
+        }
+        return result;
+    }
+    
+    private Collection<String> getColumnNamesForSetAssignment() {
+        Collection<String> result = new LinkedList<>();
+        for (AssignmentSegment each : setAssignment.getAssignments()) {
+            result.add(each.getColumn().getName());
+        }
+        return result;
+    }
+    
+    /**
+     * Get value list count.
+     *
+     * @return value list count
+     */
+    public int getValueListCount() {
+        return null == setAssignment ? values.size() : 1;
+    }
+    
+    /**
+     * Get value count for per value list.
+     * 
+     * @return value count
+     */
+    public int getValueCountForPerGroup() {
         if (!values.isEmpty()) {
             return values.iterator().next().getValues().size();
         }
@@ -79,5 +117,30 @@ public final class InsertStatement extends DMLStatement implements TableSegmentA
             return setAssignment.getAssignments().size();
         }
         return 0;
+    }
+    
+    /**
+     * Get all value expressions.
+     * 
+     * @return all value expressions
+     */
+    public Collection<Collection<ExpressionSegment>> getAllValueExpressions() {
+        return null == setAssignment ? getAllValueExpressionsFromValues() : Collections.singletonList(getAllValueExpressionsFromSetAssignment());
+    }
+    
+    private Collection<Collection<ExpressionSegment>> getAllValueExpressionsFromValues() {
+        Collection<Collection<ExpressionSegment>> result = new LinkedList<>();
+        for (InsertValuesSegment each : values) {
+            result.add(each.getValues());
+        }
+        return result;
+    }
+    
+    private Collection<ExpressionSegment> getAllValueExpressionsFromSetAssignment() {
+        List<ExpressionSegment> result = new LinkedList<>();
+        for (AssignmentSegment each : setAssignment.getAssignments()) {
+            result.add(each.getValue());
+        }
+        return result;
     }
 }

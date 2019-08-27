@@ -20,6 +20,7 @@ package org.apache.shardingsphere.core.metadata.table;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
+import org.apache.shardingsphere.core.metadata.column.ColumnMetaData;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -28,7 +29,7 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
- * Table metadata.
+ * Table meta data.
  *
  * @author panjuan
  */
@@ -39,18 +40,28 @@ public final class TableMetaData {
     
     private final Map<String, ColumnMetaData> columns;
     
-    private final Collection<String> logicIndexes;
+    private final Collection<String> indexes;
     
-    public TableMetaData(final Collection<ColumnMetaData> columnMetaDataList, final Collection<String> logicIndexes) {
+    public TableMetaData(final Collection<ColumnMetaData> columnMetaDataList, final Collection<String> indexes) {
         columns = getColumns(columnMetaDataList);
-        this.logicIndexes = new CopyOnWriteArraySet<>(logicIndexes);
+        this.indexes = new CopyOnWriteArraySet<>(indexes);
     }
     
     private Map<String, ColumnMetaData> getColumns(final Collection<ColumnMetaData> columnMetaDataList) {
         Map<String, ColumnMetaData> columns = new LinkedHashMap<>(columnMetaDataList.size(), 1);
         for (ColumnMetaData each : columnMetaDataList) {
-            columns.put(each.getColumnName(), each);
+            columns.put(each.getName(), each);
         }
         return Collections.synchronizedMap(columns);
+    }
+    
+    /**
+     * Judge contains index or not.
+     *
+     * @param indexName index name
+     * @return contains index or not
+     */
+    public boolean containsIndex(final String indexName) {
+        return indexes.contains(indexName);
     }
 }

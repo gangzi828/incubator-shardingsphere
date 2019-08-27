@@ -21,7 +21,7 @@ import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import lombok.ToString;
 import org.apache.shardingsphere.core.exception.ShardingException;
-import org.apache.shardingsphere.core.metadata.table.ShardingTableMetaData;
+import org.apache.shardingsphere.core.metadata.table.TableMetas;
 import org.apache.shardingsphere.core.parse.sql.segment.dml.column.ColumnSegment;
 import org.apache.shardingsphere.core.parse.sql.segment.generic.AliasAvailable;
 import org.apache.shardingsphere.core.parse.sql.segment.generic.TableAvailable;
@@ -142,10 +142,10 @@ public final class Tables {
      * Find table name.
      *
      * @param columnSegment column segment
-     * @param shardingTableMetaData sharding table meta data
+     * @param tableMetas table metas
      * @return table name
      */
-    public Optional<String> findTableName(final ColumnSegment columnSegment, final ShardingTableMetaData shardingTableMetaData) {
+    public Optional<String> findTableName(final ColumnSegment columnSegment, final TableMetas tableMetas) {
         if (isSingleTable()) {
             return Optional.of(getSingleTableName());
         }
@@ -153,12 +153,12 @@ public final class Tables {
             Optional<Table> table = find(columnSegment.getOwner().get().getTableName());
             return table.isPresent() ? Optional.of(table.get().getName()) : Optional.<String>absent();
         }
-        return findTableNameFromMetaData(columnSegment.getName(), shardingTableMetaData);
+        return findTableNameFromMetaData(columnSegment.getName(), tableMetas);
     }
     
-    private Optional<String> findTableNameFromMetaData(final String columnName, final ShardingTableMetaData shardingTableMetaData) {
+    private Optional<String> findTableNameFromMetaData(final String columnName, final TableMetas tableMetas) {
         for (String each : getTableNames()) {
-            if (shardingTableMetaData.containsColumn(each, columnName)) {
+            if (tableMetas.containsColumn(each, columnName)) {
                 return Optional.of(each);
             }
         }
